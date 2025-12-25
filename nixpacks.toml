@@ -2,7 +2,7 @@
 nixPkgs = ["nodejs", "python310"]
 
 [phases.build]
-cmds = ["npm install"]
+cmds = ["ln -sf $(which python3.10) /usr/local/bin/python3 || true", "npm install"]
 
 [phases.start]
 cmds = ["npm start"]
