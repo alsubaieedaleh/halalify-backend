@@ -26,7 +26,7 @@ export class AudioProcessor {
                     pythonScript,
                     '--input', filePath,
                     '--threshold', String(threshold || 0.45)
-                ]);
+                ], { shell: true });
 
                 proc.on('error', (err) => {
                     if (err.code === 'ENOENT' && cmd === 'python3' && !isWindows) {
