@@ -16,11 +16,19 @@ export class AudioProcessor {
 
         return new Promise((resolve, reject) => {
             const pythonScript = path.join(process.cwd(), 'python', 'classifier.py');
-            const pythonProcess = spawn('python', [
+            // Use python3 on Linux/Mac (Railway), python on Windows
+            const pythonExecutable = process.platform === 'win32' ? 'python' : 'python3';
+
+            const pythonProcess = spawn(pythonExecutable, [
                 pythonScript,
                 '--input', filePath,
                 '--threshold', String(threshold || 0.45)
             ]);
+
+            pythonProcess.on('error', (err) => {
+                console.error('Failed to start python script:', err);
+                reject(new Error(`Failed to spawn python script: ${err.message}`));
+            });
 
             let stdoutData = '';
             let stderrData = '';
