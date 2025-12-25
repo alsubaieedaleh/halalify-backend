@@ -16,49 +16,60 @@ export class AudioProcessor {
 
         return new Promise((resolve, reject) => {
             const pythonScript = path.join(process.cwd(), 'python', 'classifier.py');
-            // Use python3 on Linux/Mac (Railway), python on Windows
-            const pythonExecutable = process.platform === 'win32' ? 'python' : 'python3';
 
-            const pythonProcess = spawn(pythonExecutable, [
-                pythonScript,
-                '--input', filePath,
-                '--threshold', String(threshold || 0.45)
-            ]);
+            // Try python3 first on non-windows, fallback to python
+            const isWindows = process.platform === 'win32';
+            let pythonExecutable = isWindows ? 'python' : 'python3';
 
-            pythonProcess.on('error', (err) => {
-                console.error('Failed to start python script:', err);
-                reject(new Error(`Failed to spawn python script: ${err.message}`));
-            });
+            const startProcess = (cmd) => {
+                const proc = spawn(cmd, [
+                    pythonScript,
+                    '--input', filePath,
+                    '--threshold', String(threshold || 0.45)
+                ]);
 
-            let stdoutData = '';
-            let stderrData = '';
-
-            pythonProcess.stdout.on('data', (data) => {
-                stdoutData += data.toString();
-            });
-
-            pythonProcess.stderr.on('data', (data) => {
-                stderrData += data.toString();
-            });
-
-            pythonProcess.on('close', (code) => {
-                if (code !== 0) {
-                    console.error(`Python script exited with code ${code} `);
-                    console.error(`Stderr: ${stderrData} `);
-                    return reject(new Error(`Audio processing failed: ${stderrData} `));
-                }
-
-                try {
-                    const result = JSON.parse(stdoutData.trim());
-                    if (result.status === 'error') {
-                        return reject(new Error(result.message));
+                proc.on('error', (err) => {
+                    if (err.code === 'ENOENT' && cmd === 'python3' && !isWindows) {
+                        console.warn('python3 not found, falling back to python');
+                        startProcess('python');
+                        return;
                     }
-                    resolve(result);
-                } catch (error) {
-                    console.error('Failed to parse Python output:', stdoutData);
-                    reject(new Error('Failed to parse processing results'));
-                }
-            });
+                    console.error(`Failed to start python script with ${cmd}:`, err);
+                    reject(new Error(`Failed to spawn python script: ${err.message}`));
+                });
+
+                let stdoutData = '';
+                let stderrData = '';
+
+                proc.stdout.on('data', (data) => {
+                    stdoutData += data.toString();
+                });
+
+                proc.stderr.on('data', (data) => {
+                    stderrData += data.toString();
+                });
+
+                proc.on('close', (code) => {
+                    if (code !== 0) {
+                        console.error(`Python script (${cmd}) exited with code ${code}`);
+                        console.error(`Stderr: ${stderrData}`);
+                        return reject(new Error(`Audio processing failed: ${stderrData}`));
+                    }
+
+                    try {
+                        const result = JSON.parse(stdoutData.trim());
+                        if (result.status === 'error') {
+                            return reject(new Error(result.message));
+                        }
+                        resolve(result);
+                    } catch (error) {
+                        console.error('Failed to parse Python output:', stdoutData);
+                        reject(new Error('Failed to parse processing results'));
+                    }
+                });
+            };
+
+            startProcess(pythonExecutable);
         });
     }
 }
