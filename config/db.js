@@ -2,12 +2,7 @@ import mongoose from 'mongoose';
 
 const connectDB = async () => {
     try {
-        const conn = await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/halalify', {
-            // These options are no longer needed in newer Mongoose versions but kept for compatibility logic if needed
-            // useNewUrlParser: true,
-            // useUnifiedTopology: true,
-        });
-
+        const conn = await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/halalify');
         console.log(`MongoDB Connected: ${conn.connection.host}`);
     } catch (error) {
         console.error(`Error: ${error.message}`);

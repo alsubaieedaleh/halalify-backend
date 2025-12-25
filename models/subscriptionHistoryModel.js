@@ -13,7 +13,7 @@ const subscriptionHistorySchema = new mongoose.Schema({
     },
     tier: {
         type: String,
-        enum: ['free', 'starter', 'creator', 'pro', 'business', 'enterprise'],
+        enum: ['free', 'starter', 'creator', 'pro'],
         required: true
     },
     action: {
