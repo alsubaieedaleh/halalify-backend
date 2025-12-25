@@ -9,7 +9,7 @@ export const authenticate = (req, res, next) => {
     const token = authHeader.split(' ')[1];
 
     // In production, use environment variable or database lookup
-    const VALID_TOKEN = 'secret123';
+    const VALID_TOKEN = process.env.API_SECRET || 'super_secret_token_123';
 
     if (token !== VALID_TOKEN) {
         return res.status(403).json({ status: 'error', message: 'Invalid token' });
