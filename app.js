@@ -3,6 +3,7 @@ import cors from 'cors';
 import processRoutes from './routes/processRoutes.js';
 import statusRoutes from './routes/statusRoutes.js';
 import webhookRoutes from './routes/webhookRoutes.js';
+import userRoutes from './routes/userRoutes.js';
 import connectDB from './config/db.js';
 import dotenv from 'dotenv';
 
@@ -30,6 +31,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/', processRoutes);
 app.use('/', statusRoutes);
 app.use('/', webhookRoutes);
+app.use('/', userRoutes);
 
 // For now, simple health check at root
 app.get('/', (req, res) => {

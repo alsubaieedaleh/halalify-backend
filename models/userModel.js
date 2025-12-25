@@ -8,20 +8,48 @@ const userSchema = new mongoose.Schema({
     },
     subscriptionId: {
         type: String,
-        unique: true
+        unique: true,
+        sparse: true // Allow multiple nulls
     },
     customerPortalUrl: {
         type: String
     },
+    email: {
+        type: String,
+        required: true,
+        unique: true
+    },
     plan: {
         type: String,
-        enum: ['free', 'premium'],
+        enum: ['free', 'starter', 'creator', 'pro', 'business', 'enterprise'],
         default: 'free'
     },
     status: {
-        type: String, // e.g., 'active', 'cancelled', 'expired'
+        type: String,
+        enum: ['active', 'cancelled', 'expired', 'paused'],
         default: 'active'
     },
+    // Usage Tracking
+    minutesRemaining: {
+        type: Number,
+        default: 10 // Free tier gets 10 minutes
+    },
+    minutesTotal: {
+        type: Number,
+        default: 10
+    },
+    usageResetDate: {
+        type: Date,
+        default: () => new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days from now
+    },
+    // Subscription Dates
+    subscriptionStartDate: {
+        type: Date
+    },
+    subscriptionEndDate: {
+        type: Date
+    },
+    // Timestamps
     createdAt: {
         type: Date,
         default: Date.now
