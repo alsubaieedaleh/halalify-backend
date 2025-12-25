@@ -1,8 +1,8 @@
 [phases.setup]
-nixPkgs = ["nodejs", "python310"]
+nixPkgs = ["nodejs"]
 
 [phases.build]
-cmds = ["ln -sf $(which python3.10) /usr/local/bin/python3 || true", "npm install"]
+cmds = ["npm install"]
 
 [phases.start]
 cmds = ["npm start"]
