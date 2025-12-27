@@ -4,6 +4,7 @@ import processRoutes from './routes/processRoutes.js';
 import statusRoutes from './routes/statusRoutes.js';
 import webhookRoutes from './routes/webhookRoutes.js';
 import userRoutes from './routes/userRoutes.js';
+import authRoutes from './routes/authRoutes.js';
 import connectDB from './config/db.js';
 import dotenv from 'dotenv';
 
@@ -32,6 +33,7 @@ app.use('/', processRoutes);
 app.use('/', statusRoutes);
 app.use('/', webhookRoutes);
 app.use('/', userRoutes);
+app.use('/', authRoutes);
 
 // For now, simple health check at root
 app.get('/', (req, res) => {
