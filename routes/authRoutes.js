@@ -128,4 +128,76 @@ router.get('/auth/me', async (req, res) => {
     }
 });
 
+// Google OAuth endpoint
+router.post('/auth/google', async (req, res) => {
+    const { email, googleId, name, picture } = req.body;
+
+    console.log(`🔐 Google auth request for: ${email}`);
+
+    try {
+        if (!email || !googleId) {
+            return res.status(400).json({
+                success: false,
+                error: 'Email and Google ID are required'
+            });
+        }
+
+        // Find user by email or googleId
+        let user = await User.findOne({
+            $or: [{ email }, { googleId }]
+        });
+
+        if (user) {
+            // Update existing user with Google info if not already set
+            if (!user.googleId) {
+                user.googleId = googleId;
+                user.name = name;
+                user.picture = picture;
+                await user.save();
+                console.log(`✅ Updated existing user with Google auth: ${email}`);
+            } else {
+                console.log(`✅ Existing Google user: ${email}`);
+            }
+        } else {
+            // Create new free tier user with Google auth
+            user = await User.create({
+                email: email,
+                googleId: googleId,
+                name: name,
+                picture: picture,
+                lemonCustomerId: `free_${Date.now()}`,
+                plan: 'free',
+                status: 'active',
+                minutesRemaining: 10,
+                minutesTotal: 10,
+                usageResetDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+            });
+
+            console.log(`✨ New Google user created: ${email}`);
+        }
+
+        res.json({
+            success: true,
+            userId: user._id,
+            email: user.email,
+            name: user.name,
+            picture: user.picture,
+            plan: user.plan,
+            status: user.status,
+            quota: {
+                minutesRemaining: user.minutesRemaining,
+                minutesTotal: user.minutesTotal
+            }
+        });
+
+    } catch (error) {
+        console.error('❌ Google auth error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Google authentication failed',
+            message: error.message
+        });
+    }
+});
+
 export default router;

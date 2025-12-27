@@ -19,6 +19,17 @@ const userSchema = new mongoose.Schema({
         required: true,
         unique: true
     },
+    googleId: {
+        type: String,
+        unique: true,
+        sparse: true // Allow users without Google auth
+    },
+    name: {
+        type: String
+    },
+    picture: {
+        type: String
+    },
     plan: {
         type: String,
         enum: ['free', 'starter', 'creator', 'pro'],
