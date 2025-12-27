@@ -97,8 +97,16 @@ export const processChunk = async (req, res) => {
 
         // 3. Deduct usage and log (if user authenticated)
         if (user) {
-            user.minutesRemaining -= durationMinutes;
-            await user.save();
+            // ⚡ ATOMIC UPDATE: Use $inc to prevent race conditions during parallel processing
+            const updatedUser = await User.findByIdAndUpdate(
+                user._id,
+                { $inc: { minutesRemaining: -durationMinutes } },
+                { new: true } // Return the updated document
+            );
+
+            // Update local user object for response
+            user.minutesRemaining = updatedUser.minutesRemaining;
+
             console.log(`Deducted ${durationMinutes} minutes. Remaining: ${user.minutesRemaining}`);
 
             // Log usage
