@@ -130,36 +130,55 @@ router.get('/auth/me', async (req, res) => {
 
 // Google OAuth endpoint
 router.post('/auth/google', async (req, res) => {
-    const { email, googleId, name, picture } = req.body;
+    const { accessToken } = req.body;
 
-    console.log(`🔐 Google auth request for: ${email}`);
+    // Legacy support: if client still sends manual data (email, etc), reject or handle gracefully
+    // But for security we ONLY trust the token.
+
+    if (!accessToken) {
+        return res.status(400).json({
+            success: false,
+            error: 'Access Token is required'
+        });
+    }
+
+    console.log(`🔐 Verifying Google Access Token...`);
 
     try {
-        if (!email || !googleId) {
-            return res.status(400).json({
-                success: false,
-                error: 'Email and Google ID are required'
-            });
+        // 1. Verify token and get user info directly from Google
+        const googleResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+            headers: { Authorization: `Bearer ${accessToken}` }
+        });
+
+        if (!googleResponse.ok) {
+            throw new Error(`Google API returned ${googleResponse.status}`);
         }
 
-        // Find user by email or googleId
+        const googleUser = await googleResponse.json();
+
+        // 2. Extract verified info
+        const { email, id: googleId, name, picture } = googleUser;
+
+        console.log(`✅ Token verified. User: ${email}`);
+
+        // 3. Find or Create User
         let user = await User.findOne({
             $or: [{ email }, { googleId }]
         });
 
         if (user) {
-            // Update existing user with Google info if not already set
+            // Update existing user
             if (!user.googleId) {
                 user.googleId = googleId;
                 user.name = name;
                 user.picture = picture;
                 await user.save();
-                console.log(`✅ Updated existing user with Google auth: ${email}`);
+                console.log(`✅ Linked existing user to Google: ${email}`);
             } else {
-                console.log(`✅ Existing Google user: ${email}`);
+                console.log(`✅ Existing Google user logged in: ${email}`);
             }
         } else {
-            // Create new free tier user with Google auth
+            // Create new user
             user = await User.create({
                 email: email,
                 googleId: googleId,
@@ -172,10 +191,10 @@ router.post('/auth/google', async (req, res) => {
                 minutesTotal: 10,
                 usageResetDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
             });
-
             console.log(`✨ New Google user created: ${email}`);
         }
 
+        // 4. Return Session
         res.json({
             success: true,
             userId: user._id,
@@ -192,9 +211,9 @@ router.post('/auth/google', async (req, res) => {
 
     } catch (error) {
         console.error('❌ Google auth error:', error);
-        res.status(500).json({
+        res.status(401).json({
             success: false,
-            error: 'Google authentication failed',
+            error: 'Invalid Google Token',
             message: error.message
         });
     }
