@@ -105,26 +105,17 @@ export const processChunk = async (req, res) => {
         }
     }
 
-    const { url, chunk_index, start_time, duration, classifier_mode, classifier_threshold, user_id } = req.body;
+    const { url, chunk_index, start_time, duration, classifier_mode, classifier_threshold } = req.body;
     // const filePath is set above
 
     try {
         console.log(`Received chunk ${chunk_index} for URL: ${url}`);
 
-        // 0. Get user and check quota (if user_id provided)
-        let user = null;
+        // 0. Get user from authentication middleware (req.user is set by authMiddleware)
+        const user = req.user || null;
         const durationMinutes = parseFloat(duration) / 60 || 0;
 
-        if (user_id) {
-            user = await User.findById(user_id);
-            if (!user) {
-                await storageService.deleteFile(filePath);
-                return res.status(401).json({
-                    status: 'error',
-                    message: 'Invalid user ID'
-                });
-            }
-
+        if (user) {
             // Check if user has enough quota
             if (user.minutesRemaining < durationMinutes) {
                 await storageService.deleteFile(filePath);
