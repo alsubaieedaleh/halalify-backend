@@ -11,5 +11,7 @@ const router = express.Router();
 // Safest: use upload.single('file') but catch error? No.
 // Let's use upload.any() which accepts any files or none.
 router.post('/process_chunk', authenticate, upload.any(), processChunk);
+router.post('/track_usage', authenticate, processChunk); // Re-use logic but we'll optimize controller to skip processing if flag present? 
+// Better: Create separate controller function 'trackUsage'
 
 export default router;

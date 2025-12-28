@@ -6,6 +6,46 @@ import UsageLog from '../models/usageLogModel.js';
 import crypto from 'crypto';
 
 export const processChunk = async (req, res) => {
+    // ⚡ FAST PATH: Track Usage Only (Frontend processed the file)
+    if (req.path === '/track_usage' || req.body.trackOnly) {
+        const { url, chunk_index, duration, user_id } = req.body;
+        console.log(`📊 Tracking usage for User ${user_id}: ${duration}s`);
+
+        try {
+            const durationMinutes = parseFloat(duration) / 60 || 0;
+            // Atomic update
+            const updatedUser = await User.findByIdAndUpdate(
+                user_id,
+                { $inc: { minutesRemaining: -durationMinutes } },
+                { new: true }
+            );
+
+            if (!updatedUser) return res.status(404).json({ status: 'error', message: 'User not found' });
+
+            // Log it
+            await UsageLog.create({
+                userId: updatedUser._id,
+                videoUrl: url,
+                chunkIndex: chunk_index,
+                minutesProcessed: durationMinutes,
+                cached: false,
+                classifierMode: 'native_host'
+            });
+
+            return res.json({
+                status: 'success',
+                usage: {
+                    minutesUsed: durationMinutes,
+                    minutesRemaining: updatedUser.minutesRemaining,
+                    minutesTotal: updatedUser.minutesTotal
+                }
+            });
+        } catch (e) {
+            console.error('Track usage error:', e);
+            return res.status(500).json({ status: 'error', message: e.message });
+        }
+    }
+
     // 🔧 IF NO FILE: Mock it! (Simulate server-side download)
     let filePath;
     let mockFileCreated = false;
