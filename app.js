@@ -14,6 +14,7 @@ dotenv.config();
 connectDB();
 
 const app = express();
+app.enable('trust proxy'); // 🛡️ Trust Railway/Heroku proxy for req.protocol
 const PORT = process.env.PORT || 3000;
 
 // Middleware

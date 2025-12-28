@@ -27,12 +27,18 @@ export const processChunk = async (req, res) => {
         const uploadDir = 'uploads'; // Must match uploadMiddleware
         filePath = `${uploadDir}/mock-${uniqueSuffix}.mp3`;
 
-        // Create dummy file
+        // Create dummy file with valid WAV header (1 second silence)
         try {
             const fs = await import('fs');
-            // Check if uploads dir exists
             if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
-            fs.writeFileSync(filePath, 'mock audio content');
+
+            // Minimal WAV header (44 byte) + silence
+            const buffer = Buffer.from([
+                0x52, 0x49, 0x46, 0x46, 0x24, 0x00, 0x00, 0x00, 0x57, 0x41, 0x56, 0x45, 0x66, 0x6d, 0x74, 0x20,
+                0x10, 0x00, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x44, 0xac, 0x00, 0x00, 0x88, 0x58, 0x01, 0x00,
+                0x02, 0x00, 0x10, 0x00, 0x64, 0x61, 0x74, 0x61, 0x00, 0x00, 0x00, 0x00
+            ]);
+            fs.writeFileSync(filePath, buffer);
             mockFileCreated = true;
         } catch (e) {
             console.error('Failed to create mock file:', e);
@@ -124,7 +130,8 @@ export const processChunk = async (req, res) => {
             chunk_index,
             ...result,
             // 🔗 Generate public URL for the file (Crucial for frontend download)
-            url: `${req.protocol}://${req.get('host')}/${filePath.replace(/\\/g, '/')}`
+            // Force HTTPS for Railway/Production
+            url: `https://${req.get('host')}/${filePath.replace(/\\/g, '/')}`
         };
 
         // 3. Deduct usage and log (if user authenticated)
