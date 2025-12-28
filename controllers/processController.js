@@ -106,11 +106,16 @@ export const processChunk = async (req, res) => {
                 });
             }
 
-            // Clean up uploaded file immediately since we don't need it
-            await storageService.deleteFile(filePath);
+            // ⚠️ DO NOT DELETE FILE YET - The frontend needs to download it!
+            // await storageService.deleteFile(filePath); <-- REMOVED
+
             return res.json({
                 status: 'success',
-                data: cachedResult,
+                data: {
+                    ...cachedResult,
+                    // 🔗 ALWAYS return the URL of the CURRENT file we just prepared/mocked
+                    url: `https://${req.get('host')}/${filePath.replace(/\\/g, '/')}`
+                },
                 cached: true,
                 usage: user ? {
                     minutesUsed: 0,
