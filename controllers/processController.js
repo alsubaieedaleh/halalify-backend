@@ -133,7 +133,7 @@ export const processChunk = async (req, res) => {
                 data: {
                     ...cachedResult,
                     // 🔗 ALWAYS return the URL of the CURRENT file we just prepared/mocked
-                    url: `https://${req.get('host')}/${filePath.replace(/\\/g, '/')}`
+                    url: `${req.get('host').includes('localhost') ? 'http' : 'https'}://${req.get('host')}/${filePath.replace(/\\/g, '/')}`
                 },
                 cached: true,
                 usage: user ? {
