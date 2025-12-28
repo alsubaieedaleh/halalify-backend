@@ -122,7 +122,9 @@ export const processChunk = async (req, res) => {
 
         const responseData = {
             chunk_index,
-            ...result
+            ...result,
+            // 🔗 Generate public URL for the file (Crucial for frontend download)
+            url: `${req.protocol}://${req.get('host')}/${filePath.replace(/\\/g, '/')}`
         };
 
         // 3. Deduct usage and log (if user authenticated)
