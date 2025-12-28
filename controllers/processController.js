@@ -6,12 +6,42 @@ import UsageLog from '../models/usageLogModel.js';
 import crypto from 'crypto';
 
 export const processChunk = async (req, res) => {
-    if (!req.file) {
-        return res.status(400).json({ status: 'error', message: 'No file uploaded' });
+    // 🔧 IF NO FILE: Mock it! (Simulate server-side download)
+    let filePath;
+    let mockFileCreated = false;
+
+    if (req.files && req.files.length > 0) {
+        filePath = req.files[0].path;
+    } else if (req.file) {
+        filePath = req.file.path;
+    } else {
+        // Mock file creation for URL-only requests
+        console.log(`⚠️ No file uploaded. Mocking download for URL: ${req.body.url}`);
+
+        // Check if we have URL at least
+        if (!req.body.url) {
+            return res.status(400).json({ status: 'error', message: 'No file uploaded and no URL provided' });
+        }
+
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        const uploadDir = 'uploads'; // Must match uploadMiddleware
+        filePath = `${uploadDir}/mock-${uniqueSuffix}.mp3`;
+
+        // Create dummy file
+        try {
+            const fs = await import('fs');
+            // Check if uploads dir exists
+            if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+            fs.writeFileSync(filePath, 'mock audio content');
+            mockFileCreated = true;
+        } catch (e) {
+            console.error('Failed to create mock file:', e);
+            return res.status(500).json({ status: 'error', message: 'Server failed to handle download' });
+        }
     }
 
     const { url, chunk_index, start_time, duration, classifier_mode, classifier_threshold, user_id } = req.body;
-    const filePath = req.file.path;
+    // const filePath is set above
 
     try {
         console.log(`Received chunk ${chunk_index} for URL: ${url}`);

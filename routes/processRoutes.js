@@ -5,6 +5,11 @@ import { authenticate } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-router.post('/process_chunk', authenticate, upload.single('file'), processChunk);
+// Use upload.any() to handle multipart forms with or without files, 
+// or allows requests without multipart/form-data to pass (depending on multer config)
+// Better: just remove strict requirement or use .none() if no file expected?
+// Safest: use upload.single('file') but catch error? No.
+// Let's use upload.any() which accepts any files or none.
+router.post('/process_chunk', authenticate, upload.any(), processChunk);
 
 export default router;
