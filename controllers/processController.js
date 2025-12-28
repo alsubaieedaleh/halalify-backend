@@ -24,8 +24,15 @@ export const processChunk = async (req, res) => {
         }
 
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        const uploadDir = 'uploads'; // Must match uploadMiddleware
-        filePath = `${uploadDir}/mock-${uniqueSuffix}.mp3`;
+        // Use absolute path to match uploadMiddleware and express.static
+        const path = await import('path');
+        const uploadDir = path.default.join(process.cwd(), 'uploads');
+
+        // Ensure absolute path is used for writing
+        filePath = path.default.join(uploadDir, `mock-${uniqueSuffix}.mp3`);
+
+        // Use relative path for URL generation later
+        const relativePath = `uploads/mock-${uniqueSuffix}.mp3`;
 
         // Create dummy file with valid WAV header (1 second silence)
         try {
@@ -40,6 +47,18 @@ export const processChunk = async (req, res) => {
             ]);
             fs.writeFileSync(filePath, buffer);
             mockFileCreated = true;
+
+            // Update filePath variable to be the relative path for URL generation downstream?
+            // Actually downstream code uses 'filePath' to generate URL.
+            // URL generation logc: url: `https://${req.get('host')}/${filePath.replace(/\\/g, '/')}`
+            // If filePath is absolute (/app/uploads/mock.mp3), URL will be https://host//app/uploads/mock.mp3 -> WRONG.
+            // We need to keep 'filePath' as the logical file identifier, but write to 'absolutePath'.
+
+            // Let's revert 'filePath' to relative path for downstream compatibility, 
+            // but use 'absolutePath' for fs operations.
+            var absolutePath = filePath; // Keep the absolute one we just made
+            filePath = relativePath;     // Reset filePath to relative for URL generation block
+
         } catch (e) {
             console.error('Failed to create mock file:', e);
             return res.status(500).json({ status: 'error', message: 'Server failed to handle download' });
@@ -135,8 +154,8 @@ export const processChunk = async (req, res) => {
             chunk_index,
             ...result,
             // 🔗 Generate public URL for the file (Crucial for frontend download)
-            // Force HTTPS for Railway/Production
-            url: `https://${req.get('host')}/${filePath.replace(/\\/g, '/')}`
+            // Smart Protocol: HTTP for localhost, HTTPS for production
+            url: `${req.get('host').includes('localhost') ? 'http' : 'https'}://${req.get('host')}/${filePath.replace(/\\/g, '/')}`
         };
 
         // 3. Deduct usage and log (if user authenticated)

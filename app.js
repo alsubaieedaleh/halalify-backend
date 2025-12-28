@@ -28,7 +28,11 @@ app.use(express.json({
 }));
 
 app.use(express.urlencoded({ extended: true }));
-app.use('/uploads', express.static('uploads', {
+// Serve static files from absolute path to match controller
+import path from 'path';
+const uploadsPath = path.join(process.cwd(), 'uploads');
+
+app.use('/uploads', express.static(uploadsPath, {
     setHeaders: (res, path, stat) => {
         res.set('Access-Control-Allow-Origin', '*');
         res.set('Access-Control-Allow-Methods', 'GET');
