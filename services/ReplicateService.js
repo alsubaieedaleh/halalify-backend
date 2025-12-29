@@ -1,7 +1,6 @@
 import Replicate from 'replicate';
 import fetch from 'node-fetch';
 import fs from 'fs/promises';
-import { createReadStream } from 'fs';
 import path from 'path';
 
 /**
@@ -29,16 +28,13 @@ class ReplicateService {
         console.log(`🎵 [Replicate] Processing: ${inputFilePath}`);
         
         try {
-            // 1. Upload file to Replicate's file hosting first
-            // NOTE: Node.js SDK requires a URL string, unlike Python SDK which accepts file objects!
-            // We use replicate.files.create() to upload and get a hosted URL
-            const fileStats = await fs.stat(inputFilePath);
-            const fileStream = createReadStream(inputFilePath);
+            // 1. Read file as Buffer (replicate.files.create requires Buffer, not Stream!)
+            const fileBuffer = await fs.readFile(inputFilePath);
             
-            console.log(`📤 [Replicate] Uploading file (${(fileStats.size / 1024).toFixed(1)} KB)...`);
+            console.log(`📤 [Replicate] Uploading file (${(fileBuffer.length / 1024).toFixed(1)} KB)...`);
             
-            // Upload to Replicate file hosting
-            const uploadedFile = await this.replicate.files.create(fileStream, {
+            // Upload to Replicate file hosting - requires Buffer/Blob/File
+            const uploadedFile = await this.replicate.files.create(fileBuffer, {
                 filename: path.basename(inputFilePath),
                 content_type: 'audio/mpeg'
             });
