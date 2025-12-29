@@ -29,16 +29,25 @@ class ReplicateService {
         console.log(`🎵 [Replicate] Processing: ${inputFilePath}`);
         
         try {
-            // 1. Create file stream (NOT base64 - Spleeter's ffprobe can't parse data URIs!)
-            // This matches how Python's replicate.run() works with open(file, 'rb')
+            // 1. Upload file to Replicate's file hosting first
+            // NOTE: Node.js SDK requires a URL string, unlike Python SDK which accepts file objects!
+            // We use replicate.files.create() to upload and get a hosted URL
             const fileStats = await fs.stat(inputFilePath);
             const fileStream = createReadStream(inputFilePath);
             
-            console.log(`📤 [Replicate] Sending to AI (${(fileStats.size / 1024).toFixed(1)} KB)...`);
+            console.log(`📤 [Replicate] Uploading file (${(fileStats.size / 1024).toFixed(1)} KB)...`);
             
-            // 2. Run Spleeter model with file stream
+            // Upload to Replicate file hosting
+            const uploadedFile = await this.replicate.files.create(fileStream, {
+                filename: path.basename(inputFilePath),
+                content_type: 'audio/mpeg'
+            });
+            
+            console.log(`✅ [Replicate] File uploaded, URL: ${uploadedFile.urls.get}`);
+            
+            // 2. Run Spleeter model with the hosted URL
             const output = await this.replicate.run(this.modelVersion, {
-                input: { audio: fileStream }
+                input: { audio: uploadedFile.urls.get }
             });
             
             console.log(`📦 [Replicate] Output received:`, typeof output);
