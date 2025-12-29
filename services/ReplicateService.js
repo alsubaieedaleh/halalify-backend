@@ -1,6 +1,7 @@
 import Replicate from 'replicate';
 import fetch from 'node-fetch';
 import fs from 'fs/promises';
+import { createReadStream } from 'fs';
 import path from 'path';
 
 /**
@@ -28,17 +29,16 @@ class ReplicateService {
         console.log(`🎵 [Replicate] Processing: ${inputFilePath}`);
         
         try {
-            // 1. Read file and convert to base64 data URI
-            const fileBuffer = await fs.readFile(inputFilePath);
-            const base64 = fileBuffer.toString('base64');
-            const mimeType = 'audio/mpeg';
-            const dataUri = `data:${mimeType};base64,${base64}`;
+            // 1. Create file stream (NOT base64 - Spleeter's ffprobe can't parse data URIs!)
+            // This matches how Python's replicate.run() works with open(file, 'rb')
+            const fileStats = await fs.stat(inputFilePath);
+            const fileStream = createReadStream(inputFilePath);
             
-            console.log(`📤 [Replicate] Sending to AI (${(fileBuffer.length / 1024).toFixed(1)} KB)...`);
+            console.log(`📤 [Replicate] Sending to AI (${(fileStats.size / 1024).toFixed(1)} KB)...`);
             
-            // 2. Run Spleeter model
+            // 2. Run Spleeter model with file stream
             const output = await this.replicate.run(this.modelVersion, {
-                input: { audio: dataUri }
+                input: { audio: fileStream }
             });
             
             console.log(`📦 [Replicate] Output received:`, typeof output);
