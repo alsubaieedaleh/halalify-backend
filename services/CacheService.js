@@ -7,7 +7,10 @@ class CacheService {
         });
 
         this.client.on('error', (err) => {
-            console.warn('Redis Client Error', err.message);
+            if (!this.errorLogged) {
+                console.warn('Redis Client Error:', err.message, '(further errors suppressed)');
+                this.errorLogged = true;
+            }
             // We don't crash, just log. The methods will check isReady or similar.
         });
 
