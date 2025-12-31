@@ -7,6 +7,7 @@ import userRoutes from './routes/userRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import connectDB from './config/db.js';
 import dotenv from 'dotenv';
+import { keepAliveService } from './services/KeepAliveService.js';
 
 dotenv.config();
 
@@ -52,6 +53,11 @@ app.get('/', (req, res) => {
     res.send('Halalify Backend is running');
 });
 
+// 🛡️ Keep-Alive Statistics endpoint
+app.get('/keep-alive-stats', (req, res) => {
+    res.json(keepAliveService.getStats());
+});
+
 // Global Error Handler
 app.use((err, req, res, next) => {
     console.error(err.stack);
@@ -60,6 +66,10 @@ app.use((err, req, res, next) => {
 
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
+    
+    // 🛡️ Start Keep-Alive Service
+    keepAliveService.start();
 });
 
 export default app;
+
