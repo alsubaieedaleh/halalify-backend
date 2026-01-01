@@ -116,8 +116,8 @@ export const processChunk = async (req, res) => {
         const durationMinutes = parseFloat(duration) / 60 || 0;
 
         if (user) {
-            // Check if user has enough quota
-            if (user.minutesRemaining < durationMinutes) {
+            // Check if user has enough quota (Skip check for unlimited plan)
+            if (user.minutesTotal !== -1 && user.minutesRemaining < durationMinutes) {
                 await storageService.deleteFile(filePath);
                 return res.status(403).json({
                     status: 'error',
@@ -131,7 +131,11 @@ export const processChunk = async (req, res) => {
                 });
             }
 
-            console.log(`User ${user.email} - Quota: ${user.minutesRemaining}/${user.minutesTotal} min`);
+            if (user.minutesTotal === -1) {
+                console.log(`User ${user.email} - Unlimited Plan`);
+            } else {
+                console.log(`User ${user.email} - Quota: ${user.minutesRemaining}/${user.minutesTotal} min`);
+            }
         }
 
         // Generate accurate cache key
@@ -192,9 +196,15 @@ export const processChunk = async (req, res) => {
         // 3. Deduct usage and log (if user authenticated)
         if (user) {
             // ⚡ ATOMIC UPDATE: Use $inc to prevent race conditions during parallel processing
+            // Only deduct if not unlimited (-1)
+            let updateQuery = {};
+            if (user.minutesTotal !== -1) {
+                updateQuery = { $inc: { minutesRemaining: -durationMinutes } };
+            }
+
             const updatedUser = await User.findByIdAndUpdate(
                 user._id,
-                { $inc: { minutesRemaining: -durationMinutes } },
+                updateQuery,
                 { new: true } // Return the updated document
             );
 

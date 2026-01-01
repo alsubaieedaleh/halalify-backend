@@ -2,18 +2,17 @@
 export const TIER_CONFIG = {
     // Map LemonSqueezy variant IDs to plan names and minutes
     variants: {
-        '1170913': { plan: 'creator', minutes: 300 }, // Your LemonSqueezy variant - UPDATE plan if needed
-        // Add more variant IDs as you create them in LemonSqueezy:
-        // 'VARIANT_ID_2': { plan: 'pro', minutes: 500 },
-        // 'VARIANT_ID_3': { plan: 'enterprise', minutes: 1000 },
+        'VARIANT_ID_STANDARD': { plan: 'standard', minutes: 30 },
+        'VARIANT_ID_PREMIUM': { plan: 'premium', minutes: 100 },
+        '1170907': { plan: 'unlimited', minutes: -1 }, // -1 indicates unlimited
     },
 
     // Default tier minutes (fallback if variant ID not found)
     plans: {
         free: 10,
-        starter: 100,
-        creator: 300,
-        pro: 500
+        standard: 30,
+        premium: 100,
+        unlimited: -1 // Unlimited
     }
 };
 
