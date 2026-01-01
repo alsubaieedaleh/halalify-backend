@@ -18,8 +18,8 @@ export const trackUsage = async (req, res) => {
             });
         }
 
-        // Check quota
-        if (user.minutesRemaining < minutes) {
+        // Check quota (Skip for unlimited)
+        if (user.minutesTotal !== -1 && user.minutesRemaining < minutes) {
             return res.status(403).json({
                 success: false,
                 error: 'Insufficient quota',
@@ -28,7 +28,10 @@ export const trackUsage = async (req, res) => {
         }
 
         // Deduct usage and log atomically
-        user.minutesRemaining -= minutes;
+        if (user.minutesTotal !== -1) {
+            user.minutesRemaining -= minutes;
+        }
+
         await user.save();
 
         // Log usage
