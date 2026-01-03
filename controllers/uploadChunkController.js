@@ -35,19 +35,37 @@ export const uploadChunk = async (req, res) => {
 
         console.log(`📥 [Upload] Chunk ${chunkIndex}: Received ${(fileSize / 1024).toFixed(1)} KB, Duration: ${durationMinutes.toFixed(2)} min`);
 
-        // 🔐 EARLY QUOTA CHECK: Validate before processing
-        if (req.user && req.user.minutesTotal !== -1) {  // -1 = unlimited
-            if (req.user.minutesRemaining < durationMinutes) {
-                console.log(`❌ [Quota] User ${req.user.email}: Insufficient quota (${req.user.minutesRemaining.toFixed(2)} < ${durationMinutes.toFixed(2)})`);
+        // 🔐 ATOMIC QUOTA CHECK + DEDUCT: Prevents race condition with parallel chunks
+        let updatedUser = req.user;
+        if (req.user && req.user.minutesTotal !== -1 && durationMinutes > 0) {  // -1 = unlimited
+            const result = await User.findOneAndUpdate(
+                { 
+                    _id: req.user._id, 
+                    minutesRemaining: { $gte: durationMinutes }  // Only if enough quota
+                },
+                { 
+                    $inc: { minutesRemaining: -durationMinutes } 
+                },
+                { new: true }
+            );
+            
+            if (!result) {
+                // Quota insufficient - atomic operation failed
+                console.log(`❌ [Quota] User ${req.user.email}: Insufficient quota (atomic check failed)`);
                 await storageService.deleteFile(filePath);
+                
+                // Fetch current balance for error response
+                const currentUser = await User.findById(req.user._id);
                 return res.status(403).json({
                     status: 'error',
-                    message: 'Quota exceeded. Please upgrade to continue.',
-                    minutesRemaining: req.user.minutesRemaining,
-                    minutesTotal: req.user.minutesTotal
+                    message: 'quota_exceeded',
+                    minutesRemaining: currentUser?.minutesRemaining || 0,
+                    minutesTotal: currentUser?.minutesTotal || 0
                 });
             }
-            console.log(`✅ [Quota] User ${req.user.email}: OK (${req.user.minutesRemaining.toFixed(2)} remaining)`);
+            
+            updatedUser = result;
+            console.log(`✅ [Quota] User ${req.user.email}: Deducted ${durationMinutes.toFixed(2)} min, Remaining: ${result.minutesRemaining.toFixed(2)}`);
         }
 
         // 2. Generate unique chunk key
@@ -60,14 +78,15 @@ export const uploadChunk = async (req, res) => {
             chunk_index: chunkIndex
         });
 
-        // 4. Process in background (don't await)
-        processChunkBackground(chunkKey, filePath, chunkIndex, req.user, parseFloat(duration) || 0, req);
+        // 4. Process in background (don't await) - pass updatedUser, no need to deduct again
+        processChunkBackground(chunkKey, filePath, chunkIndex, updatedUser, parseFloat(duration) || 0, req);
 
-        // 5. Return immediately with chunk_key for polling
+        // 5. Return immediately with chunk_key for polling + updated quota
         return res.json({
             status: 'processing',
             chunk_key: chunkKey,
-            chunk_index: chunkIndex
+            chunk_index: chunkIndex,
+            minutesRemaining: updatedUser?.minutesRemaining
         });
 
     } catch (error) {
@@ -98,17 +117,10 @@ async function processChunkBackground(chunkKey, filePath, chunkIndex, user, dura
         const baseUrl = process.env.BASE_URL || `https://${req.get('host')}`;
         const downloadUrl = `${baseUrl}/uploads/${result.filename}`;
 
-        // 3. Deduct usage (if user authenticated)
+        // 3. Log usage (deduction already done atomically in uploadChunk)
         if (user && duration > 0) {
             const durationMinutes = duration / 60;
             
-            await User.findByIdAndUpdate(
-                user._id,
-                { $inc: { minutesRemaining: -durationMinutes } },
-                { new: true }
-            );
-
-            // Log usage
             await UsageLog.create({
                 userId: user._id,
                 videoUrl: 'native://local',
@@ -118,7 +130,7 @@ async function processChunkBackground(chunkKey, filePath, chunkIndex, user, dura
                 cached: false
             });
 
-            console.log(`📊 [Usage] User ${user.email}: -${durationMinutes.toFixed(2)} minutes`);
+            console.log(`📊 [Usage] Logged ${durationMinutes.toFixed(2)} min for user ${user.email}`);
         }
 
         // 4. Update status to ready
