@@ -31,8 +31,24 @@ export const uploadChunk = async (req, res) => {
         const chunkIndex = parseInt(chunk_index) || 0;
         const filePath = req.file.path;
         const fileSize = req.file.size;
+        const durationMinutes = (parseFloat(duration) || 0) / 60;
 
-        console.log(`📥 [Upload] Chunk ${chunkIndex}: Received ${(fileSize / 1024).toFixed(1)} KB`);
+        console.log(`📥 [Upload] Chunk ${chunkIndex}: Received ${(fileSize / 1024).toFixed(1)} KB, Duration: ${durationMinutes.toFixed(2)} min`);
+
+        // 🔐 EARLY QUOTA CHECK: Validate before processing
+        if (req.user && req.user.minutesTotal !== -1) {  // -1 = unlimited
+            if (req.user.minutesRemaining < durationMinutes) {
+                console.log(`❌ [Quota] User ${req.user.email}: Insufficient quota (${req.user.minutesRemaining.toFixed(2)} < ${durationMinutes.toFixed(2)})`);
+                await storageService.deleteFile(filePath);
+                return res.status(403).json({
+                    status: 'error',
+                    message: 'Quota exceeded. Please upgrade to continue.',
+                    minutesRemaining: req.user.minutesRemaining,
+                    minutesTotal: req.user.minutesTotal
+                });
+            }
+            console.log(`✅ [Quota] User ${req.user.email}: OK (${req.user.minutesRemaining.toFixed(2)} remaining)`);
+        }
 
         // 2. Generate unique chunk key
         const chunkKey = `${chunkIndex}_${uuidv4().slice(0, 8)}`;
