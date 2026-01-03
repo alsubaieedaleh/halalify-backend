@@ -126,7 +126,6 @@ async function processChunkBackground(chunkKey, filePath, chunkIndex, user, dura
                 videoUrl: 'native://local',
                 chunkIndex: chunkIndex,
                 minutesProcessed: durationMinutes,
-                classifierMode: 'always',
                 cached: false
             });
 

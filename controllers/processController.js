@@ -28,8 +28,7 @@ export const processChunk = async (req, res) => {
                 videoUrl: url,
                 chunkIndex: chunk_index,
                 minutesProcessed: durationMinutes,
-                cached: false,
-                classifierMode: 'native_host'
+                cached: false
             });
 
             return res.json({
@@ -105,7 +104,7 @@ export const processChunk = async (req, res) => {
         }
     }
 
-    const { url, chunk_index, start_time, duration, classifier_mode, classifier_threshold } = req.body;
+    const { url, chunk_index, start_time, duration } = req.body;
     // const filePath is set above
 
     try {
@@ -139,7 +138,7 @@ export const processChunk = async (req, res) => {
         }
 
         // Generate accurate cache key
-        const rawKey = `${url}:${chunk_index}:${classifier_mode}:${classifier_threshold}`;
+        const rawKey = `${url}:${chunk_index}`;
         const cacheKey = 'proc:' + crypto.createHash('md5').update(rawKey).digest('hex');
 
         // 1. Check Cache
@@ -154,8 +153,6 @@ export const processChunk = async (req, res) => {
                     videoUrl: url,
                     chunkIndex: chunk_index,
                     minutesProcessed: 0, // No minutes charged for cache hits
-                    classifierMode: classifier_mode || 'auto',
-                    classifierThreshold: classifier_threshold || '0.45',
                     cached: true
                 });
             }
@@ -180,10 +177,7 @@ export const processChunk = async (req, res) => {
         }
 
         // 2. Process
-        const result = await audioProcessor.processChunk(filePath, {
-            mode: classifier_mode || 'auto',
-            threshold: classifier_threshold || '0.45'
-        });
+        const result = await audioProcessor.processChunk(filePath, {});
 
         const responseData = {
             chunk_index,
@@ -219,8 +213,6 @@ export const processChunk = async (req, res) => {
                 videoUrl: url,
                 chunkIndex: chunk_index,
                 minutesProcessed: durationMinutes,
-                classifierMode: classifier_mode || 'auto',
-                classifierThreshold: classifier_threshold || '0.45',
                 cached: false
             });
         }

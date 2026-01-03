@@ -19,14 +19,7 @@ const usageLogSchema = new mongoose.Schema({
         type: Number,
         required: true
     },
-    classifierMode: {
-        type: String,
-        default: 'auto'
-    },
-    classifierThreshold: {
-        type: String,
-        default: '0.45'
-    },
+
     cached: {
         type: Boolean,
         default: false
